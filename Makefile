@@ -18,7 +18,8 @@ PLAYWRIGHT_MCP_VERSION ?= 0.0.83
 export AGENTIC_E2E_PLAYWRIGHT_MCP_VERSION := $(PLAYWRIGHT_MCP_VERSION)
 
 .PHONY: help setup install lock browser lint format format-check typecheck test test-browser \
-        test-live check ci validate run summarize demo demo-site clean clean-artifacts
+        test-live check ci validate run summarize demo article-figures demo-site clean \
+        clean-artifacts
 
 help: ## List targets
 	@grep -hE '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
@@ -86,6 +87,9 @@ demo: ## End-to-end demo in one command: serve the demo app, run the refund feat
 	$(UV) run agentic-e2e summarize $(DEMO_OUT) --features features/refund.feature > /dev/null || true; \
 	echo "Results (JSON + PNG): $(DEMO_OUT)/refund/ and $(DEMO_OUT)/suite-summary.json"; \
 	exit $$status
+
+article-figures: ## Rebuild docs/article figures and numbers.json from examples/demo-results
+	$(UV) run --with matplotlib python scripts/article_figures.py
 
 demo-site: ## Serve the demo app for features/refund.feature (http://127.0.0.1:8765/; DEMO_PORT=...)
 	$(UV) run python -m http.server $(DEMO_PORT) --bind 127.0.0.1 --directory examples/demo-site

@@ -1,0 +1,81 @@
+{
+  "source": "examples/demo-results/refund (report.json, trace.jsonl)",
+  "started_at": "2026-09-29T16:57:27+00:00",
+  "models": {
+    "executor": "claude-opus-5-5",
+    "evaluator": "claude-opus-5-5"
+  },
+  "status": "passed",
+  "steps_passed": 7,
+  "steps_total": 7,
+  "retries": 0,
+  "duration_s": 58.744,
+  "model_calls": {
+    "executor": 12,
+    "evaluator": 5
+  },
+  "browser_actions": [
+    "navigate",
+    "click",
+    "hover",
+    "click",
+    "click"
+  ],
+  "steps_without_browser_action": [
+    4,
+    6,
+    7
+  ],
+  "judged_by_code": [
+    4,
+    7
+  ],
+  "judged_by_evaluator": [
+    1,
+    2,
+    3,
+    5,
+    6
+  ],
+  "tokens": {
+    "prompt": 48859,
+    "completion": 1245,
+    "cache_read": 34880,
+    "cache_write": 13921,
+    "reasoning": 74,
+    "uncached_prompt": 58
+  },
+  "cache_read_share_of_prompt": 0.714,
+  "tokens_by_role": {
+    "executor": {
+      "prompt": 41532,
+      "completion": 763,
+      "cache_read": 34880,
+      "cache_write": 6614
+    },
+    "evaluator": {
+      "prompt": 7327,
+      "completion": 482,
+      "cache_read": 0,
+      "cache_write": 7307
+    }
+  },
+  "evaluator_cache_reads": 0,
+  "heaviest_step": 3,
+  "step_durations_s": [
+    8.724,
+    9.469,
+    12.673,
+    4.535,
+    12.896,
+    5.398,
+    4.056
+  ],
+  "estimated_cost_usd": 0.102,
+  "price_assumptions_usd_per_mtok": {
+    "input": 4.0,
+    "output": 20.0,
+    "cache_write": 5.0,
+    "cache_read": 0.2
+  }
+}

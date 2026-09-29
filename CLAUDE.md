@@ -58,6 +58,8 @@ tests/fixtures/features/ # sample .feature files, including malformed ones
 features/refund.feature  # the PRD example flow, runnable against the demo site
 examples/demo-site/      # static app: hover-revealed refund link, async status table
 examples/demo-results/   # a recorded real run of the demo (JSON + PNG), refreshed by `make demo`
+scripts/article_figures.py  # docs/article figures (PNG) + numbers.json, built only from examples/demo-results/
+docs/article/            # figures/ and numbers.json are generated
 README.md                # user-facing guide; keep in sync with this file
 ```
 
@@ -253,6 +255,7 @@ make test-live                            # full pipeline against the demo site;
 make format                               # ruff import sort + format
 make validate FEATURES=features/          # Gherkin validation only
 make demo                                 # serve the demo site, run features/refund.feature, summarize into examples/demo-results/ (spends tokens)
+make article-figures                      # regenerate docs/article/figures/*.png and numbers.json (uv run --with matplotlib)
 make demo-site                            # serve examples/demo-site on http://127.0.0.1:8765/
 make run FEATURES=features/refund.feature BASE_URL=http://127.0.0.1:8765/   # with demo-site running
 make summarize OUT=artifacts/             # suite summary JSON + Markdown
@@ -298,6 +301,7 @@ The exit code of `run` and `summarize` is `0` when everything passed, `1` when a
 - Use `asyncio` for the runner, agents and browser. Keep the parser, the assertions and the summary as pure sync functions.
 - `ANTHROPIC_API_KEY` (or an `ant auth` profile) comes only from the environment. Never write it to artifacts or logs. Traces record typed text, so features must use test-only credentials.
 - Keep the agentic surface minimal. If logic can be deterministic, it belongs in code, not in a prompt.
+- **Article numbers come from committed results only.** Every number in `docs/article/*.md` must be traceable to `docs/article/numbers.json` or to `examples/demo-results/`, never to a scratch run or memory. After `make demo` refreshes the recorded run, rerun `make article-figures` and re-check the prose. The article is plain ASCII: no em dashes, curly quotes or ellipsis characters.
 
 ## Build order
 

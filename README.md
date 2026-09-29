@@ -160,12 +160,17 @@ make test           # unit tests only: no network, browser or API key
 make test-browser   # real Playwright MCP + Chromium against the demo site; no API key
 make test-live      # the whole pipeline against the demo site; spends tokens
 make demo           # the recorded demo: refreshes examples/demo-results/ (DEMO_OUT=... to write elsewhere)
+make article-figures  # rebuild the article's charts and numbers from examples/demo-results/
 make help           # every target
 ```
 
 The code lives in `src/agentic_e2e/`, with tests in `tests/`. Only `src/agentic_e2e/browser/` may talk to the MCP server; ruff and an architecture test enforce that. [CLAUDE.md](CLAUDE.md) is the design spec: invariants, module map, report schema and the decisions taken where the original PRD was ambiguous. Read it before changing behaviour. Claude Code loads it automatically.
 
 **Not done yet:** the GitHub Actions suite workflow (one job per feature, at most 2 in parallel, then a summary job) and a `.devcontainer`. Only Chromium is supported.
+
+## Article
+
+[Your End-to-End Tests Do Not Need Step Definitions](docs/article/your-end-to-end-tests-do-not-need-step-definitions.md) walks through the recorded demo run. Its charts are PNGs in `docs/article/figures/`, and every number it quotes is in `docs/article/numbers.json`. `scripts/article_figures.py` generates both from `examples/demo-results/`.
 
 ## Related projects
 
