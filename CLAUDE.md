@@ -3,7 +3,8 @@
 Agentic end-to-end testing framework: runs existing Gherkin `.feature` files as live browser E2E tests with **no step definitions, page objects, selectors, or waits**. An executor agent performs each step against a headless browser through a Playwright MCP server; an evaluator agent judges the result; deterministic Python owns the loop, the assertions, and the record.
 
 - **Spec source:** PRD A in `.llm/agentic-e2e-testing-prd.md`. That file is gitignored, so this document is the committed spec. PRD B (guardrails) and PRD C (LLM wiki) in the same file are **out of scope** for this repo.
-- **Status:** PRD build tasks 1–10 and 12 are implemented, and `make ci` passes. The browser layer is verified against the real Playwright MCP server and Chromium (`make test-browser`). The full model-driven run (`make test-live`) needs Claude API credentials and has not been run in this repo yet. Still missing: the CI workflow (task 11) and `.devcontainer/devcontainer.json`. When a command or path here stops matching reality, update this file in the same change.
+- **Status:** PRD build tasks 1–10 and 12 are implemented, and `make ci` passes (233 unit tests). The browser layer is verified against the real Playwright MCP server and Chromium (`make test-browser`). A run without credentials is verified to stop at the preflight check with a blocked report. The full model-driven run (`make test-live`) needs Claude API credentials and has not been recorded yet. Still missing: the CI workflow (task 11) and `.devcontainer/devcontainer.json`.
+- **Docs:** `README.md` is the user-facing guide: quick start, feature-writing rules, results, the environment-variable table, and related projects. This file is the contributor and agent spec. When a command, option, default or status changes, update both in the same change.
 
 ## Non-negotiable invariants
 
@@ -56,6 +57,7 @@ tests/integration/       # `browser` marker: real MCP + Chromium; `live` marker:
 tests/fixtures/features/ # sample .feature files, including malformed ones
 features/refund.feature  # the PRD example flow, runnable against the demo site
 examples/demo-site/      # static app: hover-revealed refund link, async status table
+README.md                # user-facing guide; keep in sync with this file
 ```
 
 `.gitignore` excludes directories named `agent/`, `.agents/`, `.llm/` and `.claude/skills/`. Don't put project code in any of them. The package directory is `agents/`, plural, and that is fine. Run output goes to `artifacts/`, which is also ignored.
@@ -280,6 +282,7 @@ The exit code of `run` and `summarize` is `0` when everything passed, `1` when a
     - token accounting is correct per role.
   - **Agents:** request shape (no `tool_choice`/`temperature`, strict tools, effort, fallbacks); tool errors; the tool-call cap; refusal and `max_tokens` handling; the executor never receiving expected values; fallback echo rules.
   - **Browser client:** parsing of real 0.0.83 responses, selector refusal, error mapping.
+  - **Preflight and credentials:** each model is checked once; missing, rejected and unavailable cases map to actionable errors. A CLI run with every `ANTHROPIC_*` variable cleared exits 2 with blocked reports and never starts a browser.
   - **Summary, writer, CLI and config**, including the Makefile/config pin check.
   - **Architecture test:** no `mcp` import, MCP tool names, sleeps/timed waits or selector APIs outside `browser/`; no step-definition imports; no numeric conversion in the assertion engine.
 - Markers: `browser` (real MCP + Chromium, no API) and `live` (real agents, spends tokens) are deselected by default. They run against `examples/demo-site` served on a free local port by the `demo_site_url` fixture. Never run them against third-party sites.

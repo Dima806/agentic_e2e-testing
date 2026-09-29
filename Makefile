@@ -76,7 +76,7 @@ run: ## Run features end-to-end; needs ANTHROPIC_API_KEY (FEATURES=path OUT=dir 
 summarize: ## Aggregate per-feature reports into a suite summary (OUT=dir)
 	$(UV) run agentic-e2e summarize $(OUT)
 
-demo-site: ## Serve the demo app for features/refund.feature on http://127.0.0.1:$(DEMO_PORT)/
+demo-site: ## Serve the demo app for features/refund.feature (http://127.0.0.1:8765/; DEMO_PORT=...)
 	$(UV) run python -m http.server $(DEMO_PORT) --bind 127.0.0.1 --directory examples/demo-site
 
 # --- Housekeeping ------------------------------------------------------------
