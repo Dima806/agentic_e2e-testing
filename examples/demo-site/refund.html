@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Refund payment</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:,">
+</head>
+<body>
+  <nav><a href="index.html">Dashboard</a><a href="payments.html">Payments</a></nav>
+  <h1>Refund payment <span id="payment"></span></h1>
+  <form id="refund-form" action="status.html">
+    <input type="hidden" name="payment" id="payment-field">
+    <label>Amount <input name="amount" id="amount" readonly></label>
+    <label>Reason
+      <select name="reason">
+        <option>Customer request</option>
+        <option>Duplicate charge</option>
+      </select>
+    </label>
+    <p><button type="submit">Submit refund</button></p>
+  </form>
+  <script>
+    const params = new URLSearchParams(location.search);
+    document.getElementById('payment').textContent = params.get('payment') || '';
+    document.getElementById('payment-field').value = params.get('payment') || '';
+    document.getElementById('amount').value = params.get('amount') || '';
+  </script>
+</body>
+</html>

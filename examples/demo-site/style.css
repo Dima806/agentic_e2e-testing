@@ -1,0 +1,8 @@
+body { font-family: system-ui, sans-serif; margin: 2rem; color: #1b1f24; }
+nav a { margin-right: 1rem; }
+table { border-collapse: collapse; margin-top: 1rem; }
+th, td { border: 1px solid #c8ccd0; padding: 0.4rem 0.8rem; text-align: left; }
+/* The refund control only exists for the user (and the accessibility tree) while hovering. */
+.refund { visibility: hidden; }
+tr:hover .refund { visibility: visible; }
+label { display: block; margin-top: 0.8rem; }

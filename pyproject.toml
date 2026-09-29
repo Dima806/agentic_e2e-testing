@@ -1,0 +1,67 @@
+[project]
+name = "agentic-e2e"
+version = "0.1.0"
+description = "Run Gherkin .feature files as live browser E2E tests with no step definitions: Claude agents drive a Playwright MCP server, deterministic Python owns the loop, assertions and report."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Dmytro Iakubovskyi" }]
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=1.9,<2",   # executor + evaluator agents (Messages API, structured outputs)
+    "mcp>=2.2,<3",         # stdio client for the Playwright MCP server (browser/ only)
+    "pydantic>=2.13,<3",   # Step, ExecutorResult, Verdict, report schema
+    "pytest-bdd>=8.1,<9",  # Gherkin parsing/validation only; never register step definitions
+]
+
+[project.scripts]
+agentic-e2e = "agentic_e2e.cli:main"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3",
+    "pytest>=9.1",
+    "pytest-asyncio>=1.4",
+    "ruff>=0.16",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.20,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Browser tests need npx + Chromium; live tests also need Claude API credentials.
+# `-m browser` / `-m live` on the command line overrides the default deselection below.
+addopts = ["-ra", "--strict-markers", "--strict-config", "-m", "not live and not browser"]
+markers = [
+    "browser: drives the real Playwright MCP server and Chromium; no API; deselected by default",
+    "live: hits the Claude API and a real browser; spends tokens; deselected by default",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+extend-exclude = ["*.md"]  # code blocks in docs are illustrative, not formatted
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "ASYNC", "PT", "TID"]
+
+# Invariant 2 (CLAUDE.md): MCP access and waits live only in src/agentic_e2e/browser/.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"mcp".msg = "Only src/agentic_e2e/browser/ may talk to the MCP server (CLAUDE.md invariant 2)."
+"time.sleep".msg = "Waits live only in src/agentic_e2e/browser/ (CLAUDE.md invariant 2)."
+"asyncio.sleep".msg = "Waits live only in src/agentic_e2e/browser/ (CLAUDE.md invariant 2)."
+
+[tool.ruff.lint.per-file-ignores]
+"src/agentic_e2e/browser/**" = ["TID251"]
+# Tests may touch MCP types, write files from async fakes, and use compound asserts
+# (pytest's assertion rewriting already reports which operand failed).
+"tests/**" = ["TID251", "ASYNC240", "PT018"]
+
+[tool.mypy]
+files = ["src"]
+strict = true
+plugins = ["pydantic.mypy"]

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Refund status</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:,">
+</head>
+<body>
+  <nav><a href="index.html">Dashboard</a><a href="payments.html">Payments</a></nav>
+  <h1>Refund status</h1>
+  <p id="loading">Processing refund…</p>
+  <table aria-label="Refunds" id="refunds" hidden>
+    <thead><tr><th>Status</th><th>Payment</th><th>Reference</th><th>Amount</th></tr></thead>
+    <tbody><tr><td>Successful</td><td id="payment"></td><td id="reference"></td><td id="amount"></td></tr></tbody>
+  </table>
+  <script>
+    // The result arrives asynchronously, like a real backend, with a fresh reference each time.
+    const params = new URLSearchParams(location.search);
+    setTimeout(() => {
+      document.getElementById('payment').textContent = params.get('payment') || '';
+      document.getElementById('amount').textContent = params.get('amount') || '';
+      document.getElementById('reference').textContent =
+        'R-' + Math.floor(1000 + Math.random() * 9000);
+      document.getElementById('loading').hidden = true;
+      document.getElementById('refunds').hidden = false;
+    }, 700);
+  </script>
+</body>
+</html>
