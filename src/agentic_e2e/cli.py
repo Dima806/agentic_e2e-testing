@@ -42,7 +42,9 @@ EXIT_PASSED, EXIT_FAILED, EXIT_BLOCKED = 0, 1, 2
 def main(argv: Sequence[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
-    logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
+    # Our progress lines at INFO; libraries (HTTP clients, MCP) only when they warn.
+    logging.basicConfig(level=logging.WARNING, format="%(message)s", stream=sys.stderr)
+    log.setLevel(logging.INFO)
     try:
         return int(args.handler(args))
     except ConfigError as exc:

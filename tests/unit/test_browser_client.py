@@ -5,6 +5,7 @@ The response texts below are trimmed copies of real Playwright MCP 0.0.83 output
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -14,8 +15,12 @@ from mcp.types import CallToolResult, ErrorData, TextContent
 
 from agentic_e2e.browser import BrowserError, ElementReadError
 from agentic_e2e.browser.client import (
+    PNG_SIGNATURE,
+    SERVER_LOG,
     BrowserClient,
+    _keep_server_log,
     format_snapshot,
+    is_png,
     launch,
     server_args,
     split_sections,
@@ -176,3 +181,58 @@ async def test_launch_failure_is_a_browser_error(tmp_path: Path) -> None:
     with pytest.raises(BrowserError, match="could not start Playwright MCP"):
         async with launch(cfg, tmp_path):
             pass
+
+
+class ScreenshotSession(FakeSession):
+    """Writes the given bytes where the server would save the screenshot."""
+
+    def __init__(self, payload: bytes) -> None:
+        super().__init__({"browser_snapshot": result(SNAPSHOT)})
+        self.payload = payload
+
+    async def call_tool(self, name: str, arguments: dict[str, Any], **_: Any) -> CallToolResult:
+        if name == "browser_take_screenshot":
+            Path(arguments["filename"]).write_bytes(self.payload)
+            self.calls.append((name, arguments))
+            return result("### Result\nsaved")
+        return await super().call_tool(name, arguments)
+
+
+async def test_screenshots_are_requested_and_verified_as_png(tmp_path: Path) -> None:
+    session = ScreenshotSession(PNG_SIGNATURE + b"...")
+    browser = BrowserClient(session, timeout_s=5)  # type: ignore[arg-type]
+    assert await browser.screenshot(tmp_path / "shots" / "s01-st00-a1.png")
+    assert session.calls[-1][1]["type"] == "png"
+
+
+async def test_a_non_png_file_is_not_reported_as_a_screenshot(tmp_path: Path) -> None:
+    browser = BrowserClient(ScreenshotSession(b"\xff\xd8\xff jpeg"), timeout_s=5)  # type: ignore[arg-type]
+    assert not await browser.screenshot(tmp_path / "s.png")
+    with pytest.raises(ValueError, match="PNG"):
+        await browser.screenshot(tmp_path / "s.jpg")
+
+
+def test_is_png(tmp_path: Path) -> None:
+    (tmp_path / "a.png").write_bytes(PNG_SIGNATURE)
+    (tmp_path / "b.png").write_bytes(b"GIF89a")
+    assert is_png(tmp_path / "a.png")
+    assert not is_png(tmp_path / "b.png")
+    assert not is_png(tmp_path / "missing.png")
+
+
+def test_server_stderr_is_kept_as_json_only_when_non_empty(tmp_path: Path) -> None:
+    stderr, target = tmp_path / "stderr.log", tmp_path / SERVER_LOG
+    stderr.write_text("  \n")
+    _keep_server_log(stderr, target)
+    assert not target.exists()
+    stderr.write_text("Error: browser crashed\n")
+    _keep_server_log(stderr, target)
+    _keep_server_log(stderr, target)
+    entries = json.loads(target.read_text())
+    assert [e["session"] for e in entries] == [1, 2]
+    assert entries[0]["text"] == "Error: browser crashed\n"
+
+
+def test_server_side_files_go_to_the_scratch_directory() -> None:
+    args = server_args(Config(), Path("/tmp/scratch"))
+    assert args[args.index("--output-dir") + 1] == "/tmp/scratch"

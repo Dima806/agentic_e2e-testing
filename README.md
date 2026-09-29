@@ -4,7 +4,7 @@ Run your existing Gherkin `.feature` files as live browser end-to-end tests, wit
 
 For each step, an **executor** agent (Claude) works out the intent and acts on a real headless browser through the [Playwright MCP server](https://github.com/microsoft/playwright-mcp). An **evaluator** agent judges the result. Deterministic Python owns everything else: the loop, the retry policy, the assertions and the record. The model decides and drives; code holds the data.
 
-> **Status:** early. The pipeline is implemented and `make ci` passes: lint, strict typing, 233 unit tests and Gherkin validation. The browser layer is tested against the real Playwright MCP server and Chromium. A full model-driven run of the demo needs your Claude API key (`make test-live`) and hasn't been recorded here yet. The CI workflow and devcontainer are not written yet.
+> **Status:** early, but working end to end. The bundled demo passes all 7 steps against the real Claude API and a headless browser, and [its recorded results](examples/demo-results/) are in the repo. `make ci` passes: lint, strict typing, 239 unit tests and Gherkin validation. The CI workflow and devcontainer are not written yet.
 
 ## Why
 
@@ -40,9 +40,15 @@ make setup                                # Python deps + Chromium for the pinne
 export ANTHROPIC_API_KEY=sk-ant-...       # from https://console.anthropic.com/settings/keys
 ```
 
-In GitHub Codespaces, store the key as a [Codespaces secret](https://docs.github.com/en/codespaces/managing-your-codespaces/managing-your-account-specific-secrets-for-github-codespaces) named `ANTHROPIC_API_KEY` so every terminal has it. The secret takes effect after the codespace restarts. Never commit a key.
+In GitHub Codespaces, store the key as a [Codespaces secret](https://docs.github.com/en/codespaces/managing-your-codespaces/managing-your-account-specific-secrets-for-github-codespaces) named `ANTHROPIC_API_KEY`. **A secret added while the codespace is running does not reach terminals that are already open:** stop and restart the codespace, then check with `echo ${ANTHROPIC_API_KEY:+set}`. Never commit a key.
 
-Run the bundled example, the refund flow from the design doc, against the demo site:
+Run the bundled example, the refund flow from the design doc, in one command:
+
+```bash
+make demo           # serves examples/demo-site, runs features/refund.feature, writes examples/demo-results/
+```
+
+Or run the steps yourself:
 
 ```bash
 make demo-site                            # terminal 1: serves examples/demo-site on http://127.0.0.1:8765/
@@ -51,6 +57,22 @@ make summarize                            # suite summary from artifacts/
 ```
 
 Before it starts a browser, `run` checks that your credentials work and that the configured models are available. The check spends no tokens. Without a key it stops in a couple of seconds with instructions and writes a `blocked` report.
+
+### Recorded demo run
+
+[`examples/demo-results/`](examples/demo-results/) holds a real run of the refund feature:
+
+- **Result:** 7/7 steps passed on the first attempt in 59 s.
+- **Tokens:** 48,859 prompt (71% read from cache) and 1,245 completion.
+- **Files:**
+  - [`refund/report.json`](examples/demo-results/refund/report.json): per-step results;
+  - [`refund/trace.jsonl`](examples/demo-results/refund/trace.jsonl): every model call, browser action and verdict;
+  - [`suite-summary.json`](examples/demo-results/suite-summary.json) and its readable rendering, [`suite-summary.md`](examples/demo-results/suite-summary.md);
+  - one PNG screenshot per step in [`refund/screenshots/`](examples/demo-results/refund/screenshots/).
+
+The last step's table was checked in code against `272.00` exactly. The reference `R-6931` is generated fresh on every run, so the expected table's `<ref>` placeholder matched it.
+
+![Final step: the refund status table](examples/demo-results/refund/screenshots/s01-st06-a1.png)
 
 ## Writing features
 
@@ -99,9 +121,12 @@ Each feature writes `artifacts/<feature>/`:
 | Path | Contents |
 |---|---|
 | `report.json` | Per step: status (`PASSED`/`FAILED`/`SKIPPED`), attempts, failure kind, reason, table mismatches, screenshots, tokens (total and per agent) and duration. Written even when a run is blocked or crashes. |
-| `trace.jsonl` | Every model response, tool call, tool result, read and verdict, streamed as it happens. |
-| `snapshots/` | Long page snapshots referenced from the trace. |
-| `screenshots/` | `s01-st03-a1.png`: scenario 1, step 3, attempt 1. |
+| `trace.jsonl` | Every model response, tool call, tool result, read and verdict. It is newline-delimited JSON, one object per line, streamed as it happens so a crash loses nothing. |
+| `snapshots/*.json` | Long page snapshots and tool results referenced from the trace (`{"$ref": ...}`). |
+| `screenshots/*.png` | `s01-st03-a1.png`: scenario 1, step 3, attempt 1. Taken after every attempt and checked to be real PNG files. |
+| `mcp-server-log.json` | Browser-server error output. Only present if the server printed anything. |
+
+Results are always JSON and visuals always PNG. The browser server's own side files (page `.yml` snapshots, console logs) go to a temporary directory that is deleted after each scenario.
 
 `agentic-e2e summarize` aggregates these into `suite-summary.md` and `suite-summary.json`. The summary shows features passed, failed, blocked and missing a report, steps passed (such as `47/47`), and tokens (prompt, completion, cached share of the prompt, reasoning) with durations. It is ready for a CI job summary.
 
@@ -134,6 +159,7 @@ make ci             # what CI runs: locked install, ruff, format check, mypy --s
 make test           # unit tests only: no network, browser or API key
 make test-browser   # real Playwright MCP + Chromium against the demo site; no API key
 make test-live      # the whole pipeline against the demo site; spends tokens
+make demo           # the recorded demo: refreshes examples/demo-results/ (DEMO_OUT=... to write elsewhere)
 make help           # every target
 ```
 

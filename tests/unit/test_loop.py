@@ -245,3 +245,18 @@ async def test_trace_records_attempts_and_verdicts_with_context(tmp_path: Path) 
     assert [(e["step"], e["text"]) for e in starts][1] == (1, "When the user opens Payments")
     assert events[0]["event"] == "feature_start"
     assert events[-1]["event"] == "feature_end"
+
+
+async def test_artifacts_hold_only_json_results_and_png_visuals(tmp_path: Path) -> None:
+    evaluator = ScriptedEvaluator({1: [fail("execution"), fail("defect")]})
+    _, writer = await run(tmp_path, feature(three_steps()), evaluator=evaluator)
+    files = [p for p in writer.dir.rglob("*") if p.is_file()]
+    suffixes = {p.suffix for p in files if p.name != ".agentic-e2e"}
+    assert suffixes == {".json", ".jsonl", ".png"}
+    for path in files:
+        if path.suffix == ".png":
+            assert path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+        elif path.suffix == ".json" or path.name == ".agentic-e2e":
+            json.loads(path.read_text())
+        else:
+            assert all(json.loads(line) for line in path.read_text().splitlines())

@@ -111,9 +111,12 @@ class AnthropicMessages:
 
 
 NO_CREDENTIALS = (
-    "no Claude API credentials found. Run `export ANTHROPIC_API_KEY=<your key>` in this shell "
-    "(key from https://console.anthropic.com/settings/keys); in GitHub Codespaces, store it as "
-    "a Codespaces secret named ANTHROPIC_API_KEY so every new terminal has it"
+    "no Claude API credentials found: ANTHROPIC_API_KEY is not set in this shell. "
+    "Run `export ANTHROPIC_API_KEY=<your key>` (key from "
+    "https://console.anthropic.com/settings/keys), or in GitHub Codespaces store it as a "
+    "Codespaces secret named ANTHROPIC_API_KEY. A secret added while the codespace is running "
+    "is not visible to existing terminals: stop and restart the codespace, then check with "
+    "`echo ${ANTHROPIC_API_KEY:+set}`"
 )
 
 

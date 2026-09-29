@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import re
+import tempfile
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
@@ -56,7 +57,10 @@ _READ_TABLE_JS = """(element) => {
 _READ_TEXT_JS = "(element) => element.innerText"
 
 
-def server_args(cfg: Config, workdir: Path) -> list[str]:
+SERVER_LOG = "mcp-server-log.json"
+
+
+def server_args(cfg: Config, scratch: Path) -> list[str]:
     args = [
         "-y",
         f"@playwright/mcp@{cfg.playwright_mcp_version}",
@@ -66,8 +70,10 @@ def server_args(cfg: Config, workdir: Path) -> list[str]:
         # Screenshots are evidence for humans, written to disk; never sent back to the model.
         "--image-responses",
         "omit",
+        # The server's own side files (page .yml snapshots, console .log) go to a scratch
+        # directory that is deleted with the session, so artifacts hold only JSON and PNG.
         "--output-dir",
-        str(workdir / "mcp"),
+        str(scratch),
     ]
     if cfg.headless:
         args.append("--headless")
@@ -78,16 +84,21 @@ def server_args(cfg: Config, workdir: Path) -> list[str]:
 async def launch(cfg: Config, workdir: Path) -> AsyncIterator[BrowserClient]:
     """Start a fresh Playwright MCP server (and browser) for one scenario.
 
-    The server runs with `workdir` as its working directory, which is also the only place it may
-    write files such as screenshots.
+    The server runs with `workdir` (the feature's artifact directory) as its working directory,
+    which is what allows it to write screenshots there. Anything the server prints to stderr is
+    kept as `mcp-server-log.json` in `workdir`, and only when there is something to keep.
     """
     workdir = _ensure_dir(workdir)
-    params = StdioServerParameters(
-        command=cfg.npx_command, args=server_args(cfg, workdir), cwd=workdir
-    )
     try:
         async with AsyncExitStack() as stack:
-            errlog = stack.enter_context((workdir / "mcp-server.log").open("a", encoding="utf-8"))
+            scratch = Path(stack.enter_context(tempfile.TemporaryDirectory(prefix="agentic-e2e-")))
+            stderr_path = scratch / "stderr.log"
+            # Runs after the server has exited and before the scratch directory is removed.
+            stack.callback(_keep_server_log, stderr_path, workdir / SERVER_LOG)
+            errlog = stack.enter_context(stderr_path.open("w", encoding="utf-8"))
+            params = StdioServerParameters(
+                command=cfg.npx_command, args=server_args(cfg, scratch), cwd=workdir
+            )
             try:
                 read, write = await stack.enter_async_context(stdio_client(params, errlog=errlog))
                 session = await stack.enter_async_context(ClientSession(read, write))
@@ -96,7 +107,7 @@ async def launch(cfg: Config, workdir: Path) -> AsyncIterator[BrowserClient]:
             except Exception as exc:
                 raise BrowserError(
                     f"could not start Playwright MCP {cfg.playwright_mcp_version} "
-                    f"(see {workdir / 'mcp-server.log'}): {exc!r}"
+                    f"(server output, if any: {workdir / SERVER_LOG}): {exc!r}"
                 ) from exc
             missing = sorted(REQUIRED_TOOLS - available)
             if missing:
@@ -113,6 +124,25 @@ async def launch(cfg: Config, workdir: Path) -> AsyncIterator[BrowserClient]:
             raise
         leaf.__suppress_context__ = True
         raise leaf from leaf.__cause__
+
+
+def _keep_server_log(stderr_path: Path, target: Path) -> None:
+    """Append this session's server stderr to a JSON list in the artifacts, if it said anything."""
+    try:
+        text = stderr_path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return
+    if not text.strip():
+        return
+    entries: list[object] = []
+    if target.is_file():
+        try:
+            loaded = json.loads(target.read_text(encoding="utf-8"))
+            entries = loaded if isinstance(loaded, list) else [loaded]
+        except (OSError, json.JSONDecodeError):
+            entries = []
+    entries.append({"source": "playwright-mcp stderr", "session": len(entries) + 1, "text": text})
+    target.write_text(json.dumps(entries, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def _single_leaf(group: BaseExceptionGroup[BaseException]) -> BaseException | None:
@@ -188,10 +218,13 @@ class BrowserClient:
         return value
 
     async def screenshot(self, path: Path) -> bool:
+        """Save a PNG of the viewport. True only if a real PNG file landed at `path`."""
+        if path.suffix != ".png":
+            raise ValueError(f"screenshots are PNG files; got {path.name}")
         path = _ensure_dir(path.parent) / path.name
         args = {"type": "png", "scale": "css", "filename": str(path)}
         is_error, _ = await self._call("browser_take_screenshot", args)
-        return not is_error and _is_file(path)
+        return not is_error and is_png(path)
 
     # --- plumbing ----------------------------------------------------------------------------
 
@@ -245,8 +278,15 @@ def _ensure_dir(directory: Path) -> Path:
     return directory
 
 
-def _is_file(path: Path) -> bool:
-    return path.is_file()
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+
+def is_png(path: Path) -> bool:
+    try:
+        with path.open("rb") as handle:
+            return handle.read(len(PNG_SIGNATURE)) == PNG_SIGNATURE
+    except OSError:
+        return False
 
 
 def split_sections(text: str) -> dict[str, str]:

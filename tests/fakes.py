@@ -167,7 +167,7 @@ class FakeBrowser:
 
     async def screenshot(self, path: Path) -> bool:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(b"\x89PNG fake")
+        path.write_bytes(b"\x89PNG\r\n\x1a\n fake")
         self.screenshots.append(path)
         return True
 

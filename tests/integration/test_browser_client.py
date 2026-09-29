@@ -47,7 +47,16 @@ async def test_refund_flow_with_exact_table_read(demo_site_url: str, tmp_path: P
         heading = await browser.read_element_text(ref(snapshot, r'heading "Refund status"'))
         assert heading == "Refund status"
         assert await browser.screenshot(tmp_path / "screenshots" / "s01-st00-a1.png")
-    assert (tmp_path / "screenshots" / "s01-st00-a1.png").stat().st_size > 1000
+    shot = tmp_path / "screenshots" / "s01-st00-a1.png"
+    assert shot.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+    assert shot.stat().st_size > 1000
+    # The server's own side files (.yml snapshots, console .log) never land in the artifacts.
+    leftovers = [
+        p.relative_to(tmp_path).as_posix()
+        for p in tmp_path.rglob("*")
+        if p.is_file() and p.suffix not in {".png", ".json"}
+    ]
+    assert leftovers == []
 
 
 async def test_errors_inside_a_session_surface_unwrapped(

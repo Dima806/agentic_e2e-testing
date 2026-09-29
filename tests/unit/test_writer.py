@@ -31,9 +31,12 @@ def test_long_text_is_offloaded_to_snapshot_files(tmp_path: Path) -> None:
         writer.event("tool_result", message="x" * 50, nested={"snapshot": "y" * 20}, ok=True)
     (record,) = events(writer)
     ref = record["message"]["$ref"]
-    assert ref.startswith("snapshots/") and record["message"]["chars"] == 50
-    assert (writer.dir / ref).read_text() == "x" * 50
-    assert (writer.dir / record["nested"]["snapshot"]["$ref"]).read_text() == "y" * 20
+    assert ref.startswith("snapshots/") and ref.endswith(".json")
+    assert record["message"]["chars"] == 50
+    blob = json.loads((writer.dir / ref).read_text())
+    assert blob == {"seq": 1, "field": "message", "chars": 50, "text": "x" * 50}
+    nested = json.loads((writer.dir / record["nested"]["snapshot"]["$ref"]).read_text())
+    assert nested["text"] == "y" * 20
     assert record["ok"] is True
 
 

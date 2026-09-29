@@ -1,0 +1,311 @@
+{
+  "schema_version": 1,
+  "feature": {
+    "path": "features/refund.feature",
+    "name": "Refund a payment",
+    "slug": "refund"
+  },
+  "status": "passed",
+  "error": null,
+  "models": {
+    "executor": "claude-opus-5-5",
+    "evaluator": "claude-opus-5-5"
+  },
+  "started_at": "2026-09-29T16:57:27+00:00",
+  "duration_s": 58.744,
+  "scenarios": [
+    {
+      "name": "A support agent refunds a successful payment",
+      "line": 4,
+      "status": "passed",
+      "steps": [
+        {
+          "index": 0,
+          "line": 5,
+          "keyword": "Given",
+          "text": "a user is on the dashboard page",
+          "status": "PASSED",
+          "attempts": 1,
+          "retried": false,
+          "failure_kind": null,
+          "reason": "The page title and the level-1 heading both read \"Dashboard\", confirming the user is on the dashboard page.",
+          "mismatches": [],
+          "screenshots": [
+            "screenshots/s01-st00-a1.png"
+          ],
+          "tokens": {
+            "prompt": 7230,
+            "completion": 178,
+            "cache_read": 5981,
+            "cache_write": 1239,
+            "reasoning": 0
+          },
+          "tokens_by_role": {
+            "executor": {
+              "prompt": 5987,
+              "completion": 109,
+              "cache_read": 5981,
+              "cache_write": 0,
+              "reasoning": 0
+            },
+            "evaluator": {
+              "prompt": 1243,
+              "completion": 69,
+              "cache_read": 0,
+              "cache_write": 1239,
+              "reasoning": 0
+            }
+          },
+          "duration_s": 8.724
+        },
+        {
+          "index": 1,
+          "line": 6,
+          "keyword": "When",
+          "text": "the user opens the Payments section",
+          "status": "PASSED",
+          "attempts": 1,
+          "retried": false,
+          "failure_kind": null,
+          "reason": "The Payments page is open (URL payments.html, title and heading 'Payments') and its payments table shows three payment rows.",
+          "mismatches": [],
+          "screenshots": [
+            "screenshots/s01-st01-a1.png"
+          ],
+          "tokens": {
+            "prompt": 8358,
+            "completion": 193,
+            "cache_read": 6723,
+            "cache_write": 1625,
+            "reasoning": 0
+          },
+          "tokens_by_role": {
+            "executor": {
+              "prompt": 6729,
+              "completion": 122,
+              "cache_read": 6723,
+              "cache_write": 0,
+              "reasoning": 0
+            },
+            "evaluator": {
+              "prompt": 1629,
+              "completion": 71,
+              "cache_read": 0,
+              "cache_write": 1625,
+              "reasoning": 0
+            }
+          },
+          "duration_s": 9.469
+        },
+        {
+          "index": 2,
+          "line": 7,
+          "keyword": "And",
+          "text": "the user hovers over payment P-1001, finds the refund link, clicks it to open the refund page",
+          "status": "PASSED",
+          "attempts": 1,
+          "retried": false,
+          "failure_kind": null,
+          "reason": "The refund page for P-1001 is open, showing the heading \"Refund payment P-1001\" at refund.html?payment=P-1001 with the refund form.",
+          "mismatches": [],
+          "screenshots": [
+            "screenshots/s01-st02-a1.png"
+          ],
+          "tokens": {
+            "prompt": 13710,
+            "completion": 310,
+            "cache_read": 12217,
+            "cache_write": 1481,
+            "reasoning": 0
+          },
+          "tokens_by_role": {
+            "executor": {
+              "prompt": 12225,
+              "completion": 226,
+              "cache_read": 12217,
+              "cache_write": 0,
+              "reasoning": 0
+            },
+            "evaluator": {
+              "prompt": 1485,
+              "completion": 84,
+              "cache_read": 0,
+              "cache_write": 1481,
+              "reasoning": 0
+            }
+          },
+          "duration_s": 12.673
+        },
+        {
+          "index": 3,
+          "line": 8,
+          "keyword": "Then",
+          "text": "the refund page for payment \"P-1001\" should be visible",
+          "status": "PASSED",
+          "attempts": 1,
+          "retried": false,
+          "failure_kind": null,
+          "reason": "all expected values matched exactly",
+          "mismatches": [],
+          "screenshots": [
+            "screenshots/s01-st03-a1.png"
+          ],
+          "tokens": {
+            "prompt": 3255,
+            "completion": 57,
+            "cache_read": 3251,
+            "cache_write": 0,
+            "reasoning": 0
+          },
+          "tokens_by_role": {
+            "executor": {
+              "prompt": 3255,
+              "completion": 57,
+              "cache_read": 3251,
+              "cache_write": 0,
+              "reasoning": 0
+            },
+            "evaluator": {
+              "prompt": 0,
+              "completion": 0,
+              "cache_read": 0,
+              "cache_write": 0,
+              "reasoning": 0
+            }
+          },
+          "duration_s": 4.535
+        },
+        {
+          "index": 4,
+          "line": 9,
+          "keyword": "When",
+          "text": "the user submits the refund request",
+          "status": "PASSED",
+          "attempts": 1,
+          "retried": false,
+          "failure_kind": null,
+          "reason": "The submission took effect: the Refund status page opened and lists refund R-6931 for payment P-1001 (272.00) with status 'Successful'; the executor's 'Processing refund…' note does not appear on the page.",
+          "mismatches": [],
+          "screenshots": [
+            "screenshots/s01-st04-a1.png"
+          ],
+          "tokens": {
+            "prompt": 8208,
+            "completion": 308,
+            "cache_read": 6708,
+            "cache_write": 1490,
+            "reasoning": 74
+          },
+          "tokens_by_role": {
+            "executor": {
+              "prompt": 6714,
+              "completion": 132,
+              "cache_read": 6708,
+              "cache_write": 0,
+              "reasoning": 0
+            },
+            "evaluator": {
+              "prompt": 1494,
+              "completion": 176,
+              "cache_read": 0,
+              "cache_write": 1490,
+              "reasoning": 74
+            }
+          },
+          "duration_s": 12.896
+        },
+        {
+          "index": 5,
+          "line": 10,
+          "keyword": "Then",
+          "text": "the refund status page should be visible",
+          "status": "PASSED",
+          "attempts": 1,
+          "retried": false,
+          "failure_kind": null,
+          "reason": "The page titled 'Refund status' shows the 'Refund status' heading and the Refunds table with a row for P-1001, so the refund status page is visible.",
+          "mismatches": [],
+          "screenshots": [
+            "screenshots/s01-st05-a1.png"
+          ],
+          "tokens": {
+            "prompt": 4764,
+            "completion": 135,
+            "cache_read": 0,
+            "cache_write": 4756,
+            "reasoning": 0
+          },
+          "tokens_by_role": {
+            "executor": {
+              "prompt": 3288,
+              "completion": 53,
+              "cache_read": 0,
+              "cache_write": 3284,
+              "reasoning": 0
+            },
+            "evaluator": {
+              "prompt": 1476,
+              "completion": 82,
+              "cache_read": 0,
+              "cache_write": 1472,
+              "reasoning": 0
+            }
+          },
+          "duration_s": 5.398
+        },
+        {
+          "index": 6,
+          "line": 11,
+          "keyword": "Then",
+          "text": "the refunds table should be shown with following values",
+          "status": "PASSED",
+          "attempts": 1,
+          "retried": false,
+          "failure_kind": null,
+          "reason": "all expected values matched exactly",
+          "mismatches": [],
+          "screenshots": [
+            "screenshots/s01-st06-a1.png"
+          ],
+          "tokens": {
+            "prompt": 3334,
+            "completion": 64,
+            "cache_read": 0,
+            "cache_write": 3330,
+            "reasoning": 0
+          },
+          "tokens_by_role": {
+            "executor": {
+              "prompt": 3334,
+              "completion": 64,
+              "cache_read": 0,
+              "cache_write": 3330,
+              "reasoning": 0
+            },
+            "evaluator": {
+              "prompt": 0,
+              "completion": 0,
+              "cache_read": 0,
+              "cache_write": 0,
+              "reasoning": 0
+            }
+          },
+          "duration_s": 4.056
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "steps_total": 7,
+    "steps_passed": 7,
+    "steps_failed": 0,
+    "steps_skipped": 0,
+    "tokens": {
+      "prompt": 48859,
+      "completion": 1245,
+      "cache_read": 34880,
+      "cache_write": 13921,
+      "reasoning": 74
+    }
+  }
+}

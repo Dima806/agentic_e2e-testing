@@ -10,6 +10,7 @@ FEATURES  ?= features/
 OUT       ?= artifacts/
 BASE_URL  ?=
 DEMO_PORT ?= 8765
+DEMO_OUT  ?= examples/demo-results
 # Pinned Playwright MCP server. The browser is installed with the Playwright CLI bundled in
 # this exact package so the Chromium build matches. Must equal the default in
 # src/agentic_e2e/config.py (a unit test checks); exported so overrides reach the runner.
@@ -17,7 +18,7 @@ PLAYWRIGHT_MCP_VERSION ?= 0.0.83
 export AGENTIC_E2E_PLAYWRIGHT_MCP_VERSION := $(PLAYWRIGHT_MCP_VERSION)
 
 .PHONY: help setup install lock browser lint format format-check typecheck test test-browser \
-        test-live check ci validate run summarize demo-site clean clean-artifacts
+        test-live check ci validate run summarize demo demo-site clean clean-artifacts
 
 help: ## List targets
 	@grep -hE '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) \
@@ -75,6 +76,16 @@ run: ## Run features end-to-end; needs ANTHROPIC_API_KEY (FEATURES=path OUT=dir 
 
 summarize: ## Aggregate per-feature reports into a suite summary (OUT=dir)
 	$(UV) run agentic-e2e summarize $(OUT)
+
+demo: ## End-to-end demo in one command: serve the demo app, run the refund feature, summarize into DEMO_OUT
+	@python3 -m http.server $(DEMO_PORT) --bind 127.0.0.1 --directory examples/demo-site \
+		> /dev/null 2>&1 & server=$$!; trap 'kill $$server 2>/dev/null' EXIT; sleep 1; \
+	status=0; \
+	$(UV) run agentic-e2e run features/refund.feature --out $(DEMO_OUT) \
+		--base-url http://127.0.0.1:$(DEMO_PORT)/ || status=$$?; \
+	$(UV) run agentic-e2e summarize $(DEMO_OUT) --features features/refund.feature > /dev/null || true; \
+	echo "Results (JSON + PNG): $(DEMO_OUT)/refund/ and $(DEMO_OUT)/suite-summary.json"; \
+	exit $$status
 
 demo-site: ## Serve the demo app for features/refund.feature (http://127.0.0.1:8765/; DEMO_PORT=...)
 	$(UV) run python -m http.server $(DEMO_PORT) --bind 127.0.0.1 --directory examples/demo-site

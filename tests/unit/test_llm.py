@@ -159,4 +159,5 @@ async def test_preflight_failures_are_actionable(error: Exception, message: str)
 
 def test_missing_credentials_message_fits_codespaces() -> None:
     assert "Codespaces secret named ANTHROPIC_API_KEY" in NO_CREDENTIALS
+    assert "stop and restart the codespace" in NO_CREDENTIALS
     assert "ant auth" not in NO_CREDENTIALS

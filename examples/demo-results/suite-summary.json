@@ -1,0 +1,37 @@
+{
+  "features_scheduled": 1,
+  "max_parallel_jobs": null,
+  "matrix_result": null,
+  "passed": 1,
+  "failed": 0,
+  "blocked": 0,
+  "missing": 0,
+  "steps_passed": 7,
+  "steps_total": 7,
+  "tokens": {
+    "prompt": 48859,
+    "completion": 1245,
+    "cache_read": 34880,
+    "cache_write": 13921,
+    "reasoning": 74
+  },
+  "duration_s": 58.744,
+  "features": [
+    {
+      "slug": "refund",
+      "name": "Refund a payment",
+      "status": "passed",
+      "steps_passed": 7,
+      "steps_total": 7,
+      "duration_s": 58.744,
+      "tokens": {
+        "prompt": 48859,
+        "completion": 1245,
+        "cache_read": 34880,
+        "cache_write": 13921,
+        "reasoning": 74
+      },
+      "note": null
+    }
+  ]
+}

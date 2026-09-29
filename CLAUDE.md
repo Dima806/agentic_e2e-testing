@@ -3,7 +3,7 @@
 Agentic end-to-end testing framework: runs existing Gherkin `.feature` files as live browser E2E tests with **no step definitions, page objects, selectors, or waits**. An executor agent performs each step against a headless browser through a Playwright MCP server; an evaluator agent judges the result; deterministic Python owns the loop, the assertions, and the record.
 
 - **Spec source:** PRD A in `.llm/agentic-e2e-testing-prd.md`. That file is gitignored, so this document is the committed spec. PRD B (guardrails) and PRD C (LLM wiki) in the same file are **out of scope** for this repo.
-- **Status:** PRD build tasks 1–10 and 12 are implemented, and `make ci` passes (233 unit tests). The browser layer is verified against the real Playwright MCP server and Chromium (`make test-browser`). A run without credentials is verified to stop at the preflight check with a blocked report. The full model-driven run (`make test-live`) needs Claude API credentials and has not been recorded yet. Still missing: the CI workflow (task 11) and `.devcontainer/devcontainer.json`.
+- **Status:** PRD build tasks 1–10 and 12 are implemented, and `make ci` passes (239 unit tests). The browser layer is verified against the real Playwright MCP server and Chromium (`make test-browser`). The full model-driven demo passes end to end against the real API: 7/7 steps, first attempt, about 59 s and about 49k prompt tokens (71% cached). Its results are recorded in `examples/demo-results/` by `make demo`. A run without credentials stops at the preflight check with a blocked report. `make test-live` (the same flow as a pytest test) has not been run yet. Still missing: the CI workflow (task 11) and `.devcontainer/devcontainer.json`.
 - **Docs:** `README.md` is the user-facing guide: quick start, feature-writing rules, results, the environment-variable table, and related projects. This file is the contributor and agent spec. When a command, option, default or status changes, update both in the same change.
 
 ## Non-negotiable invariants
@@ -17,7 +17,7 @@ These are the PRD acceptance criteria. Every change must preserve them, and each
 5. **Fail fast.** The first real (non-retryable) failure ends the scenario. The next scenario still runs.
 6. **Nothing silently dropped.** Every step starts as `SKIPPED` in the report and only changes when it runs, so steps after a failure or a blocked feature are always recorded, with a reason.
 7. **The model never carries asserted data.** Models locate on-screen elements. Code reads their values and compares them. Values are compared as exact strings: `272.00` never becomes `272` or `272.0`, and there is no `float()`, no rounding and no reformatting. The executor is shown only a table's header row, never the expected values.
-8. **Every run leaves evidence:** per-step status, trace, token counts, screenshots and `report.json`. The suite also gets an aggregated summary.
+8. **Every run leaves evidence:** per-step status, trace, token counts, screenshots and `report.json`. The suite also gets an aggregated summary. Results are JSON (`report.json`, `trace.jsonl` lines, `snapshots/*.json`, `suite-summary.json`) and visuals are PNG. `test_loop.py` fails if anything else lands in a feature's artifact folder. `suite-summary.md` is only a rendering of the JSON for CI.
 
 ## Architecture
 
@@ -49,7 +49,7 @@ src/agentic_e2e/
   assertions/engine.py   # deterministic table / literal comparison
   runner/loop.py         # FeatureRunner: the per-step loop controller
   artifacts/report.py    # report.json schema
-  artifacts/writer.py    # streamed trace.jsonl, snapshots/, screenshots/, report.json
+  artifacts/writer.py    # streamed trace.jsonl, snapshots/*.json, screenshots/*.png, report.json
   artifacts/summary.py   # suite summary (JSON + Markdown for CI)
 tests/fakes.py           # FakeBrowser, FakeMessages, scripted executor/evaluator
 tests/unit/              # deterministic core; no network, browser or API
@@ -57,6 +57,7 @@ tests/integration/       # `browser` marker: real MCP + Chromium; `live` marker:
 tests/fixtures/features/ # sample .feature files, including malformed ones
 features/refund.feature  # the PRD example flow, runnable against the demo site
 examples/demo-site/      # static app: hover-revealed refund link, async status table
+examples/demo-results/   # a recorded real run of the demo (JSON + PNG), refreshed by `make demo`
 README.md                # user-facing guide; keep in sync with this file
 ```
 
@@ -146,16 +147,16 @@ for scenario in feature.scenarios:              # fresh browser session per scen
 
 ## Browser MCP client (`browser/client.py`)
 
-- `launch(cfg, workdir)` starts `npx -y @playwright/mcp@<pin> --isolated --browser chromium --image-responses omit --output-dir <workdir>/mcp [--headless]` over stdio, using the `mcp` 2.x client (`stdio_client`, `StdioServerParameters`, `ClientSession`).
+- `launch(cfg, workdir)` starts `npx -y @playwright/mcp@<pin> --isolated --browser chromium --image-responses omit --output-dir <scratch> [--headless]` over stdio, using the `mcp` 2.x client (`stdio_client`, `StdioServerParameters`, `ClientSession`). `<scratch>` is a temporary directory that is deleted with the session, so the server's own `.yml` page snapshots and console logs never reach the artifacts.
   - The pin is `PLAYWRIGHT_MCP_VERSION` in the `Makefile` (currently `0.0.83`), which must equal `Config.playwright_mcp_version`. A unit test checks this, and the Makefile exports the pin as `AGENTIC_E2E_PLAYWRIGHT_MCP_VERSION`.
   - Without `--browser chromium`, the server uses the Chrome channel, which isn't installed.
   - `make browser` installs Chromium with the Playwright CLI bundled in the pinned package, so the browser build matches.
-- The server runs with the feature's artifact directory as its working directory. The server only writes files under its working directory and `--output-dir`, so this is what lets screenshots land in `screenshots/`. Its stderr goes to `mcp-server.log` there.
+- The server runs with the feature's artifact directory as its working directory. The server only writes files under its working directory and `--output-dir`, so this is what lets screenshots land in `screenshots/`. Its stderr is captured in the scratch directory and kept as `mcp-server-log.json` (a JSON list, one entry per session) only when it is non-empty.
 - On start, `launch` checks that every tool in `REQUIRED_TOOLS` exists, so a pin mismatch fails loudly as a `BrowserError`. It also unwraps the `ExceptionGroup`s the MCP client's task groups put around errors raised inside a session.
 - In 0.0.83, tools take `target` (a snapshot ref such as `e12`, or `f2e7` inside a frame) plus an `element` description. `BrowserClient` refuses anything that isn't a ref, so the model can never drive the page by selector.
 - Every action result is `OK` or `ERROR: …` followed by a fresh snapshot, with the server's code-generation sections stripped. MCP protocol errors and tool errors go back to the model as tool errors. Any other exception (dead process) is a `BrowserError`, which counts as infrastructure.
 - **`read_table(ref)` / `read_element_text(ref)`** run fixed JavaScript through `browser_evaluate` and return `innerText` values. These values go to the assertion engine and never to a model. A missing or stale ref raises `ElementReadError`, which is retryable.
-- **`screenshot(path)`** writes the PNG straight to disk. Screenshots are human evidence and are never sent to the model (`--image-responses omit`).
+- **`screenshot(path)`** asks for `type: png`, rejects any other file suffix, and returns true only when the file starts with the PNG signature. Screenshots are human evidence and are never sent to the model (`--image-responses omit`).
 
 ## Deterministic assertions (`assertions/engine.py`)
 
@@ -172,10 +173,10 @@ Per feature, under `artifacts/<feature-slug>/`:
 ```
 report.json            # written in `finally`: on pass, fail, blocked and crash paths
 trace.jsonl            # one event per line, flushed immediately; context: scenario, step, attempt
-snapshots/             # strings over 2000 chars from trace events, referenced as {"$ref": ...}
-screenshots/s01-st03-a1.png   # scenario, step, attempt; taken after every attempt
-mcp/, mcp-server.log   # Playwright MCP output directory and server stderr
-.agentic-e2e           # marker: only directories carrying it are ever wiped for a rerun
+snapshots/*.json       # strings over 2000 chars from trace events ({seq, field, chars, text}), referenced as {"$ref": ...}
+screenshots/s01-st03-a1.png   # PNG per scenario, step and attempt; taken after every attempt
+mcp-server-log.json    # Playwright MCP stderr, only when it printed anything
+.agentic-e2e           # JSON marker: only directories carrying it are ever wiped for a rerun
 ```
 
 The slug is the feature's path relative to the directory given to `run` (`checkout/refund.feature` becomes `checkout-refund`), or the file stem for a single file. Stream to disk as events happen, and never hold screenshots, snapshots or the full trace in memory, because the container has about 8 GB of RAM. `ArtifactWriter` refuses to overwrite a non-empty directory it didn't create.
@@ -251,13 +252,14 @@ make test-browser                         # real Playwright MCP + Chromium again
 make test-live                            # full pipeline against the demo site; needs Claude API credentials
 make format                               # ruff import sort + format
 make validate FEATURES=features/          # Gherkin validation only
+make demo                                 # serve the demo site, run features/refund.feature, summarize into examples/demo-results/ (spends tokens)
 make demo-site                            # serve examples/demo-site on http://127.0.0.1:8765/
 make run FEATURES=features/refund.feature BASE_URL=http://127.0.0.1:8765/   # with demo-site running
 make summarize OUT=artifacts/             # suite summary JSON + Markdown
 make lock                                 # after editing dependencies in pyproject.toml
 ```
 
-`run` and `test-live` need Claude API credentials. The SDK reads `ANTHROPIC_API_KEY` (or `ANTHROPIC_AUTH_TOKEN`, or a profile from the separate `ant` CLI, which isn't installed in the Codespace). Use `export ANTHROPIC_API_KEY=...` for the current shell, or a Codespaces secret named `ANTHROPIC_API_KEY` for every terminal (it takes effect after the codespace restarts). Never commit a key: `.env` files are gitignored, but nothing here loads them.
+`run` and `test-live` need Claude API credentials. The SDK reads `ANTHROPIC_API_KEY` (or `ANTHROPIC_AUTH_TOKEN`, or a profile from the separate `ant` CLI, which isn't installed in the Codespace). Use `export ANTHROPIC_API_KEY=...` for the current shell, or a Codespaces secret named `ANTHROPIC_API_KEY` for every terminal. A secret added while the codespace is running is **not** visible to terminals or agent sessions that are already open until the codespace is stopped and restarted. This was the cause of a real "no credentials" report here while the secret existed. Check with `echo ${ANTHROPIC_API_KEY:+set}`, never by printing the value. Never commit a key: `.env` files are gitignored, but nothing here loads them.
 
 The exit code of `run` and `summarize` is `0` when everything passed, `1` when any feature failed, and `2` when any feature was blocked, a report is missing, or the input was invalid.
 
@@ -284,6 +286,7 @@ The exit code of `run` and `summarize` is `0` when everything passed, `1` when a
   - **Browser client:** parsing of real 0.0.83 responses, selector refusal, error mapping.
   - **Preflight and credentials:** each model is checked once; missing, rejected and unavailable cases map to actionable errors. A CLI run with every `ANTHROPIC_*` variable cleared exits 2 with blocked reports and never starts a browser.
   - **Summary, writer, CLI and config**, including the Makefile/config pin check.
+  - **Artifact formats:** after a run with retries and a failure, every file in the feature folder is valid JSON/JSONL or a real PNG. Screenshots are verified by signature, and non-PNG output is rejected. The server's stderr is kept only when non-empty.
   - **Architecture test:** no `mcp` import, MCP tool names, sleeps/timed waits or selector APIs outside `browser/`; no step-definition imports; no numeric conversion in the assertion engine.
 - Markers: `browser` (real MCP + Chromium, no API) and `live` (real agents, spends tokens) are deselected by default. They run against `examples/demo-site` served on a free local port by the `demo_site_url` fixture. Never run them against third-party sites.
 
