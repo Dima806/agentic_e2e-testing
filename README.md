@@ -168,10 +168,6 @@ The code lives in `src/agentic_e2e/`, with tests in `tests/`. Only `src/agentic_
 
 **Not done yet:** the GitHub Actions suite workflow (one job per feature, at most 2 in parallel, then a summary job) and a `.devcontainer`. Only Chromium is supported.
 
-## Article
-
-[Your End-to-End Tests Do Not Need Step Definitions](docs/article/your-end-to-end-tests-do-not-need-step-definitions.md) walks through the recorded demo run. Its charts are PNGs in `docs/article/figures/`, and every number it quotes is in `docs/article/numbers.json`. `scripts/article_figures.py` generates both from `examples/demo-results/`.
-
 ## Related projects
 
 Other projects of mine on [GitHub](https://github.com/Dima806) that touch the same themes: agents, verifying model output, and retrieval.
